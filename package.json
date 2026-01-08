@@ -1,0 +1,45 @@
+{
+  "name": "rush-mcp-rwx-plugin",
+  "version": "0.1.0",
+  "description": "Rush MCP plugin for RWX CI/CD integration",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/**/*",
+    "rush-mcp-plugin.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf lib",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teamcurri/rush-mcp-rwx-plugin.git"
+  },
+  "keywords": [
+    "rush",
+    "mcp",
+    "rwx",
+    "ci",
+    "cd",
+    "plugin"
+  ],
+  "author": "Curri",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/teamcurri/rush-mcp-rwx-plugin/issues"
+  },
+  "homepage": "https://github.com/teamcurri/rush-mcp-rwx-plugin#readme",
+  "dependencies": {
+    "@types/node": "^24.0.1",
+    "typescript": "^5.8.2"
+  },
+  "devDependencies": {
+    "@rushstack/mcp-server": "^0.3.7"
+  },
+  "peerDependencies": {
+    "@rushstack/mcp-server": "^0.3.7"
+  }
+}

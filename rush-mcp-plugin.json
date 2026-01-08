@@ -1,0 +1,4 @@
+{
+  "pluginName": "rwx",
+  "entryPoint": "./lib/index.js"
+}
