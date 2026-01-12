@@ -1,4 +1,4 @@
-import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '@rushstack/mcp-server';
+import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { runRwxCommand } from '../utils';
 

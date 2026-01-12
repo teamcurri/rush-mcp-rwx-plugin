@@ -1,4 +1,4 @@
-import type { IRushMcpPlugin, RushMcpPluginSession } from '@rushstack/mcp-server';
+import type { IRushMcpPlugin, RushMcpPluginSession } from './types/rush-mcp-plugin';
 import { McpProxyClient } from './McpProxyClient';
 import { ProxyTool } from './ProxyTool';
 

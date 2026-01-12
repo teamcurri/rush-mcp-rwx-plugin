@@ -1,8 +1,7 @@
 import { execFileSync } from 'child_process';
 
 export const RWX_ORG = 'curri';
-export const HONEYCOMB_ENV = 'test';
-export const HONEYCOMB_DATASET = 'rwx';
+
 
 export function runRwxCommand(args: string[], cwd?: string): string {
   try {
