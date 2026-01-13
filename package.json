@@ -4,13 +4,18 @@
   "description": "Rush MCP plugin for RWX CI/CD integration",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "bin": {
+    "rwx-mcp": "./cli.js"
+  },
   "files": [
     "lib/**/*",
+    "cli.js",
     "rush-mcp-plugin.json"
   ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf lib",
+    "cli": "node cli.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },

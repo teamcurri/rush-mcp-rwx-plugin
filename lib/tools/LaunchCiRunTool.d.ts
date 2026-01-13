@@ -5,13 +5,10 @@ export declare class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['sc
     readonly session: RushMcpPluginSession;
     constructor(plugin: RwxPlugin);
     get schema(): zodModule.ZodObject<{
-        ref: zodModule.ZodString;
         targets: zodModule.ZodOptional<zodModule.ZodArray<zodModule.ZodString, "many">>;
     }, "strip", zodModule.ZodTypeAny, {
-        ref: string;
         targets?: string[] | undefined;
     }, {
-        ref: string;
         targets?: string[] | undefined;
     }>;
     executeAsync(input: zodModule.infer<LaunchCiRunTool['schema']>): Promise<CallToolResult>;

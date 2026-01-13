@@ -14,7 +14,6 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
   public get schema() {
     const zod: typeof zodModule = this.session.zod;
     return zod.object({
-      ref: zod.string().describe('Git ref (branch name or commit SHA)'),
       targets: zod
         .array(zod.string())
         .optional()
@@ -24,7 +23,7 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
 
   public async executeAsync(input: zodModule.infer<LaunchCiRunTool['schema']>): Promise<CallToolResult> {
     try {
-      const args = ['run', '.rwx/ci.yml', '--ref', input.ref, '--json'];
+      const args = ['run', '.rwx/ci.yml', '--json'];
       if (input.targets && input.targets.length > 0) {
         input.targets.forEach((t) => args.push('--target', t));
       }
@@ -33,10 +32,10 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
 
       const response = {
         next_step:
-          'Use analyze_ci_run with this run_id to monitor progress',
-        run_id: parsed.run_id,
+          'Use wait_for_ci_run to wait for completion, or get_run_test_failures to check results',
+        run_id: parsed.RunId || parsed.run_id,
         status: 'launched',
-        url: parsed.url,
+        url: parsed.RunURL || parsed.url,
       };
 
       return {
