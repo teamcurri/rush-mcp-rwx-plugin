@@ -26,7 +26,7 @@ interface McpTool {
 }
 
 /**
- * Client for proxying requests to the standalone rwx mcp server
+ * Client for proxying requests to the rwx mcp serve CLI
  */
 export class McpProxyClient extends EventEmitter {
   private _process: ChildProcess | null = null;
@@ -42,11 +42,9 @@ export class McpProxyClient extends EventEmitter {
   private _tools: McpTool[] = [];
   private _initialized = false;
 
-  public async startAsync(rushWorkspacePath: string): Promise<void> {
-    // Spawn the standalone rwx-mcp-server from packages/rwx-mcp-server
-    const serverPath = `${rushWorkspacePath}/packages/rwx-mcp-server/dist/index.js`;
-
-    this._process = spawn('node', [serverPath], {
+  public async startAsync(): Promise<void> {
+    // Spawn the rwx mcp serve CLI
+    this._process = spawn('rwx', ['mcp', 'serve'], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
@@ -63,7 +61,7 @@ export class McpProxyClient extends EventEmitter {
     // Handle stderr - log errors
     this._process.stderr?.on('data', (data: Buffer) => {
       const message = data.toString().trim();
-      if (message && !message.includes('RWX CI/CD MCP Server running')) {
+      if (message) {
         console.error('[rwx mcp stderr]:', message);
       }
     });
@@ -95,6 +93,9 @@ export class McpProxyClient extends EventEmitter {
       throw new Error('Failed to initialize MCP connection');
     }
 
+    // Send initialized notification
+    this._sendNotification('notifications/initialized', {});
+
     this._initialized = true;
   }
 
@@ -122,6 +123,21 @@ export class McpProxyClient extends EventEmitter {
       name,
       arguments: args,
     });
+  }
+
+  private _sendNotification(method: string, params: unknown): void {
+    if (!this._process?.stdin) {
+      return;
+    }
+
+    const notification = {
+      jsonrpc: '2.0',
+      method,
+      params,
+    };
+
+    const notificationJson = JSON.stringify(notification) + '\n';
+    this._process.stdin.write(notificationJson);
   }
 
   private async _sendRequestAsync(
@@ -167,7 +183,7 @@ export class McpProxyClient extends EventEmitter {
   private _handleResponse(response: JsonRpcResponse): void {
     const pending = this._pendingRequests.get(response.id);
     if (!pending) {
-      console.error('[rwx mcp] Received response for unknown request:', response.id);
+      // Could be a notification from server, ignore if no pending request
       return;
     }
 

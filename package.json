@@ -37,9 +37,6 @@
     "typescript": "^5.8.2"
   },
   "devDependencies": {
-    "@rushstack/mcp-server": "^0.1.8"
-  },
-  "peerDependencies": {
-    "@rushstack/mcp-server": "^0.1.4"
+    "@rushstack/mcp-server": "^0.2.1"
   }
 }

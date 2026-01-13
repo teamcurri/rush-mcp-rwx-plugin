@@ -1,7 +1,61 @@
 import { execFileSync } from 'child_process';
 
 export const RWX_ORG = 'curri';
+export const MIN_RWX_VERSION = '2.3.2';
 
+/**
+ * Check if the rwx CLI is installed and meets the minimum version requirement.
+ * Throws an error if not installed or version is too low.
+ */
+export function checkRwxCliVersion(): void {
+  let versionOutput: string;
+
+  try {
+    versionOutput = execFileSync('rwx', ['--version'], {
+      encoding: 'utf-8',
+    }).trim();
+  } catch (error) {
+    throw new Error(
+      `rwx CLI is not installed or not in PATH. Please install rwx CLI version >= ${MIN_RWX_VERSION}. ` +
+        'See https://docs.rwx.com/mint/install for installation instructions.'
+    );
+  }
+
+  // Parse version from output like "rwx version v2.3.2"
+  const versionMatch = versionOutput.match(/v?(\d+\.\d+\.\d+)/);
+  if (!versionMatch) {
+    throw new Error(
+      `Could not parse rwx CLI version from output: ${versionOutput}`
+    );
+  }
+
+  const installedVersion = versionMatch[1];
+  if (!isVersionGte(installedVersion, MIN_RWX_VERSION)) {
+    throw new Error(
+      `rwx CLI version ${installedVersion} is installed, but version >= ${MIN_RWX_VERSION} is required. ` +
+        'Please update your rwx CLI installation.'
+    );
+  }
+}
+
+/**
+ * Compare two semantic versions.
+ * Returns true if a >= b.
+ */
+function isVersionGte(a: string, b: string): boolean {
+  const partsA = a.split('.').map(Number);
+  const partsB = b.split('.').map(Number);
+
+  for (let i = 0; i < 3; i++) {
+    const partA = partsA[i] || 0;
+    const partB = partsB[i] || 0;
+
+    if (partA > partB) return true;
+    if (partA < partB) return false;
+  }
+
+  return true; // Equal
+}
 
 export function runRwxCommand(args: string[], cwd?: string): string {
   try {

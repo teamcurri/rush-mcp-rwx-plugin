@@ -1,6 +1,13 @@
 import type { IRushMcpPlugin, RushMcpPluginSession } from './types/rush-mcp-plugin';
 import { McpProxyClient } from './McpProxyClient';
 import { ProxyTool } from './ProxyTool';
+import { checkRwxCliVersion } from './utils';
+import { LaunchCiRunTool } from './tools/LaunchCiRunTool';
+import { WaitForCiRunTool } from './tools/WaitForCiRunTool';
+import { GetTaskLogsTool } from './tools/GetTaskLogsTool';
+import { HeadLogsTool } from './tools/HeadLogsTool';
+import { TailLogsTool } from './tools/TailLogsTool';
+import { GrepLogsTool } from './tools/GrepLogsTool';
 
 export class RwxPlugin implements IRushMcpPlugin {
   public session: RushMcpPluginSession;
@@ -11,13 +18,13 @@ export class RwxPlugin implements IRushMcpPlugin {
   }
 
   public async onInitializeAsync(): Promise<void> {
-    try {
-      // Get the Rush workspace path (current working directory when Rush MCP server starts)
-      const rushWorkspacePath = process.cwd();
+    // Check rwx CLI version on boot - throws if not installed or version too low
+    checkRwxCliVersion();
 
+    try {
       // Start the rwx mcp proxy client
       this._proxyClient = new McpProxyClient();
-      await this._proxyClient.startAsync(rushWorkspacePath);
+      await this._proxyClient.startAsync();
 
       // Dynamically register all tools from the rwx mcp server
       for (const tool of this._proxyClient.tools) {
@@ -33,9 +40,42 @@ export class RwxPlugin implements IRushMcpPlugin {
         );
       }
 
-      console.error(`[RWX Plugin] Successfully proxied ${this._proxyClient.tools.length} tools from rwx mcp server`);
+      console.error(`[RWX Plugin] Successfully proxied ${this._proxyClient.tools.length} tools from rwx mcp serve`);
+
+      // Register native tools that extend rwx mcp functionality
+      this.session.registerTool(
+        { toolName: 'launch_ci_run' },
+        new LaunchCiRunTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'wait_for_ci_run' },
+        new WaitForCiRunTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'get_task_logs' },
+        new GetTaskLogsTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'head_logs' },
+        new HeadLogsTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'tail_logs' },
+        new TailLogsTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'grep_logs' },
+        new GrepLogsTool(this)
+      );
+
+      console.error('[RWX Plugin] Registered 6 native tools (launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs)');
     } catch (error) {
-      console.error('[RWX Plugin] Failed to start proxy client:', error);
+      console.error('[RWX Plugin] Failed to initialize:', error);
       throw error;
     }
   }

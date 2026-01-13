@@ -2,7 +2,16 @@
 
 ## Overview
 
-This is a **Rush MCP plugin** that integrates RWX CI/CD functionality into the Rush monorepo MCP server. The plugin acts as a proxy, spawning the standalone `rwx-mcp-server` and forwarding tool requests via JSON-RPC over stdio.
+This is a **Rush MCP plugin** that integrates RWX CI/CD functionality into the Rush monorepo MCP server. The plugin:
+
+1. **Proxies tools** from the `rwx mcp serve` CLI command
+2. **Provides native tools** for enhanced CI/CD operations (launch, wait, log inspection)
+3. **Validates** that the rwx CLI is installed with version >= 2.3.2 on boot
+
+## Prerequisites
+
+- `rwx` CLI installed and in PATH (version >= 2.3.2)
+- `RWX_ACCESS_TOKEN` environment variable set for API operations
 
 ## Commands
 
@@ -24,44 +33,61 @@ No test suite is currently configured.
 ```
 src/
 ├── index.ts              # Plugin entry point, exports RwxPlugin class
-├── McpProxyClient.ts     # JSON-RPC client that spawns and proxies to rwx-mcp-server
-├── ProxyTool.ts          # Generic tool wrapper that forwards requests to proxy
-├── utils.ts              # Shared utilities (RWX CLI wrapper, API helpers)
-└── tools/                # Individual MCP tool implementations (currently unused in proxy mode)
-    ├── GetTaskLogsTool.ts
-    ├── LaunchCiRunTool.ts
-    └── WaitForCiRunTool.ts
+├── McpProxyClient.ts     # JSON-RPC client that spawns `rwx mcp serve`
+├── ProxyTool.ts          # Generic tool wrapper for proxied tools
+├── utils.ts              # Shared utilities (CLI version check, API helpers)
+└── tools/                # Native tool implementations
+    ├── GetTaskLogsTool.ts   # Download and return full task logs
+    ├── LaunchCiRunTool.ts   # Launch a CI run via `rwx run`
+    ├── WaitForCiRunTool.ts  # Poll and wait for run completion
+    ├── HeadLogsTool.ts      # Return first N lines of logs
+    ├── TailLogsTool.ts      # Return last N lines of logs
+    └── GrepLogsTool.ts      # Search logs for pattern with context
 ```
+
+## Tools Provided
+
+### Proxied Tools (from `rwx mcp serve`)
+
+All tools exposed by `rwx mcp serve` are automatically discovered and proxied.
+
+### Native Tools
+
+| Tool | Description |
+|------|-------------|
+| `launch_ci_run` | Launch a CI workflow for a branch/commit using `rwx run` |
+| `wait_for_ci_run` | Poll the RWX API until a run completes or times out |
+| `get_task_logs` | Download full logs for a task ID |
+| `head_logs` | Return first N lines of logs for a run/task |
+| `tail_logs` | Return last N lines of logs for a run/task |
+| `grep_logs` | Search logs for a pattern with context lines |
 
 ## Architecture
 
-### Plugin Registration
+### Initialization Flow
 
-The plugin implements `IRushMcpPlugin` from `@rushstack/mcp-server`:
-
-1. **Entry point**: `rush-mcp-plugin.json` points to `lib/index.js`
-2. **Initialization**: `onInitializeAsync()` spawns the `rwx-mcp-server` subprocess
-3. **Tool discovery**: Dynamically registers all tools discovered from the downstream server
-4. **Request forwarding**: All tool calls are proxied via `ProxyTool` → `McpProxyClient`
+1. **Version check**: Validates `rwx --version` returns >= 2.3.2, throws if not
+2. **Proxy startup**: Spawns `rwx mcp serve` as subprocess
+3. **MCP handshake**: Initializes JSON-RPC 2.0 connection over stdio
+4. **Tool discovery**: Fetches tools from proxy and registers them
+5. **Native tools**: Registers additional tools (launch, wait, log tools)
 
 ### Proxy Pattern
 
-The plugin doesn't execute tool logic directly. Instead:
+```
+Rush MCP Server
+    └─▶ RwxPlugin
+        ├─▶ McpProxyClient ─▶ [rwx mcp serve subprocess]
+        │       └─▶ JSON-RPC 2.0 over stdio
+        └─▶ Native Tools (launch, wait, logs)
+```
 
-1. `McpProxyClient` spawns `node packages/rwx-mcp-server/dist/index.js` (relative to Rush workspace root)
-2. Communicates via JSON-RPC 2.0 over stdio (newline-delimited JSON)
-3. On startup, initializes MCP protocol and fetches available tools
-4. `ProxyTool` dynamically converts JSON Schema to Zod schema for Rush MCP compatibility
-
-### Tool Files (src/tools/)
-
-These files contain standalone tool implementations that query RWX APIs. They are **not currently used** in the proxy architecture but serve as reference implementations or fallbacks.
-
-## Code Patterns
+- `ProxyTool` converts JSON Schema to Zod schema for Rush MCP compatibility
+- Tool calls are forwarded to `rwx mcp serve` via JSON-RPC
 
 ### Tool Implementation Pattern
 
-All tools implement `IRushMcpTool<T['schema']>`:
+All native tools implement `IRushMcpTool<T['schema']>`:
 
 ```typescript
 export class SomeTool implements IRushMcpTool<SomeTool['schema']> {
@@ -76,7 +102,7 @@ export class SomeTool implements IRushMcpTool<SomeTool['schema']> {
   public get schema() {
     const zod: typeof zodModule = this.session.zod;
     return zod.object({
-      // schema definition
+      // schema definition using session's zod instance
     });
   }
 
@@ -97,18 +123,40 @@ return {
 };
 ```
 
-### Error Handling
+## Environment Variables
 
-Errors are caught and returned as error content rather than thrown:
+- `RWX_ACCESS_TOKEN` - Bearer token for RWX Cloud API authentication (required for wait_for_ci_run)
+
+## Constants (src/utils.ts)
 
 ```typescript
-catch (error) {
-  return {
-    content: [{ type: 'text', text: `Failed to do X: ${error}` }],
-    isError: true,
-  };
-}
+RWX_ORG = 'curri'           // Organization slug for RWX URLs
+MIN_RWX_VERSION = '2.3.2'   // Minimum required rwx CLI version
 ```
+
+## Key Differences from rwx-mcp-server Package
+
+This plugin is **independent** of the `packages/rwx-mcp-server` package in the monorepo:
+
+| Aspect | rush-mcp-rwx-plugin | packages/rwx-mcp-server |
+|--------|---------------------|------------------------|
+| Type | Rush MCP plugin | Standalone MCP server |
+| Proxy target | `rwx mcp serve` CLI | N/A |
+| Native tools | Yes (launch, wait, logs) | Implements tools directly |
+| Version check | Validates rwx >= 2.3.2 | No validation |
+| Dependency | None on rwx-mcp-server | Standalone |
+
+## Gotchas
+
+1. **rwx CLI required**: Plugin will fail to initialize if `rwx` is not in PATH or version < 2.3.2
+
+2. **Log tools download files**: `head_logs`, `tail_logs`, `grep_logs`, and `get_task_logs` all download the full logs to a temp directory before processing. This can be slow for large logs.
+
+3. **JSON Schema to Zod conversion**: `ProxyTool.schema` does basic type mapping. Complex JSON Schema features (enums, nested objects) are simplified.
+
+4. **No reconnect**: If the `rwx mcp serve` process dies, pending requests fail and no automatic restart occurs.
+
+5. **Session zod**: All tools must use `this.session.zod` for schema definitions, not a directly imported zod package.
 
 ## TypeScript Configuration
 
@@ -116,39 +164,3 @@ catch (error) {
 - **Module**: CommonJS
 - **Strict mode**: Enabled
 - **Output**: `lib/` directory with declarations and source maps
-- **Types**: `@types/node` only
-
-## Dependencies
-
-### Runtime
-- `@types/node` (incorrectly in dependencies, should be devDependencies)
-- `typescript` (incorrectly in dependencies, should be devDependencies)
-
-### Peer Dependencies
-- `@rushstack/mcp-server` ^0.1.4 (required, provides MCP types and runtime)
-
-## Environment Variables
-
-The plugin expects these environment variables when tools call RWX APIs:
-
-- `RWX_ACCESS_TOKEN` - Bearer token for RWX Cloud API authentication
-
-## Constants (src/utils.ts)
-
-```typescript
-RWX_ORG = 'curri'           // Organization slug for RWX URLs
-```
-
-## Gotchas
-
-1. **Proxy server path is hardcoded**: `McpProxyClient` expects `packages/rwx-mcp-server/dist/index.js` relative to `process.cwd()` (Rush workspace root). This must exist in the consuming monorepo.
-
-2. **No standalone operation**: This plugin only works within a Rush MCP server context; it cannot run independently.
-
-3. **Tool files unused**: The `src/tools/` directory contains reference implementations but the proxy architecture dynamically discovers and forwards to downstream tools.
-
-4. **JSON Schema to Zod conversion**: `ProxyTool.schema` does basic type mapping (string, number, boolean, array, object). Complex JSON Schema features (enums, nested objects with specific shapes) are simplified to `zod.unknown()` or `zod.record()`.
-
-5. **Stderr filtering**: `McpProxyClient` filters out the startup message "RWX CI/CD MCP Server running" from stderr output.
-
-6. **No graceful shutdown handling**: If the proxy process dies unexpectedly, pending requests are rejected but no automatic restart occurs.

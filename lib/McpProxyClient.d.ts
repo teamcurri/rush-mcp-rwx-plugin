@@ -5,7 +5,7 @@ interface McpTool {
     inputSchema: Record<string, unknown>;
 }
 /**
- * Client for proxying requests to the standalone rwx mcp server
+ * Client for proxying requests to the rwx mcp serve CLI
  */
 export declare class McpProxyClient extends EventEmitter {
     private _process;
@@ -14,11 +14,12 @@ export declare class McpProxyClient extends EventEmitter {
     private _buffer;
     private _tools;
     private _initialized;
-    startAsync(rushWorkspacePath: string): Promise<void>;
+    startAsync(): Promise<void>;
     private _initializeAsync;
     private _fetchToolsAsync;
     get tools(): McpTool[];
     callToolAsync(name: string, args: Record<string, unknown>): Promise<unknown>;
+    private _sendNotification;
     private _sendRequestAsync;
     private _processBuffer;
     private _handleResponse;
