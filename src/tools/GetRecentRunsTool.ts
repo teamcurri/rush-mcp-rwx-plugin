@@ -4,14 +4,13 @@ import { RWX_ORG } from '../utils';
 
 interface RwxRunListItem {
   id: string;
-  created_at: string;
-  completed_at: string | null;
-  run_status: {
-    execution: string;
-    result: string;
-  };
-  git_ref?: string;
-  git_sha?: string;
+  branch: string | null;
+  commit_sha: string | null;
+  result_status: string;
+  execution_status: string;
+  title: string;
+  trigger: string;
+  definition_path: string;
 }
 
 interface RwxRunsListResponse {
@@ -32,7 +31,7 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
     return zod.object({
       ref: zod
         .string()
-        .describe('Git ref (branch name or commit SHA) to filter runs by'),
+        .describe('Git ref (branch name) to filter runs by'),
       limit: zod
         .number()
         .default(5)
@@ -47,10 +46,10 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
         throw new Error('RWX_ACCESS_TOKEN environment variable not set');
       }
 
-      // Query the RWX API for runs filtered by ref
+      // Query the RWX API for runs - fetch more than needed since we'll filter client-side
+      const fetchLimit = Math.min(input.limit * 10, 100);
       const params = new URLSearchParams({
-        limit: String(input.limit),
-        git_ref: input.ref,
+        limit: String(fetchLimit),
       });
 
       const apiUrl = `https://cloud.rwx.com/mint/api/runs?${params}`;
@@ -68,12 +67,20 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
 
       const data = (await response.json()) as RwxRunsListResponse;
 
-      const runs = (data.runs || []).map((run) => {
+      // Filter by branch and only include ci.yml runs
+      const filteredRuns = (data.runs || [])
+        .filter((run) => 
+          run.branch === input.ref && 
+          run.definition_path === '.rwx/ci.yml'
+        )
+        .slice(0, input.limit);
+
+      const runs = filteredRuns.map((run) => {
         let status: string;
-        if (run.completed_at === null && run.run_status.execution !== 'finished') {
+        if (run.execution_status !== 'finished') {
           status = 'running';
         } else {
-          const result = run.run_status.result?.toLowerCase();
+          const result = run.result_status?.toLowerCase();
           if (result === 'succeeded') {
             status = 'success';
           } else if (result === 'failed') {
@@ -85,8 +92,9 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
 
         return {
           run_id: run.id,
-          date: run.created_at,
           status,
+          commit_sha: run.commit_sha,
+          title: run.title,
           url: `https://cloud.rwx.com/mint/${RWX_ORG}/runs/${run.id}`,
         };
       });
