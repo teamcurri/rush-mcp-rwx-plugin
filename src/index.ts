@@ -8,6 +8,7 @@ import { GetTaskLogsTool } from './tools/GetTaskLogsTool';
 import { HeadLogsTool } from './tools/HeadLogsTool';
 import { TailLogsTool } from './tools/TailLogsTool';
 import { GrepLogsTool } from './tools/GrepLogsTool';
+import { GetRecentRunsTool } from './tools/GetRecentRunsTool';
 
 export class RwxPlugin implements IRushMcpPlugin {
   public session: RushMcpPluginSession;
@@ -73,7 +74,12 @@ export class RwxPlugin implements IRushMcpPlugin {
         new GrepLogsTool(this)
       );
 
-      console.error('[RWX Plugin] Registered 6 native tools (launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs)');
+      this.session.registerTool(
+        { toolName: 'get_recent_runs' },
+        new GetRecentRunsTool(this)
+      );
+
+      console.error('[RWX Plugin] Registered 7 native tools (launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs, get_recent_runs)');
     } catch (error) {
       console.error('[RWX Plugin] Failed to initialize:', error);
       throw error;
