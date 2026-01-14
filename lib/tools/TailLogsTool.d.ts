@@ -7,12 +7,15 @@ export declare class TailLogsTool implements IRushMcpTool<TailLogsTool['schema']
     get schema(): zodModule.ZodObject<{
         id: zodModule.ZodString;
         lines: zodModule.ZodDefault<zodModule.ZodNumber>;
+        offset: zodModule.ZodDefault<zodModule.ZodNumber>;
     }, "strip", zodModule.ZodTypeAny, {
         id: string;
         lines: number;
+        offset: number;
     }, {
         id: string;
         lines?: number | undefined;
+        offset?: number | undefined;
     }>;
     executeAsync(input: zodModule.infer<TailLogsTool['schema']>): Promise<CallToolResult>;
 }

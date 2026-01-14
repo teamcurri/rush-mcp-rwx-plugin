@@ -2,6 +2,8 @@ import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } fr
 import type { RwxPlugin } from '../index';
 import { extractRunId, downloadLogs } from '../utils';
 
+const MAX_LINES_PER_PAGE = 50;
+
 export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
   public readonly plugin: RwxPlugin;
   public readonly session: RushMcpPluginSession;
@@ -24,6 +26,10 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
         .number()
         .default(3)
         .describe('Number of context lines before and after matches (default: 3)'),
+      page: zod
+        .number()
+        .default(1)
+        .describe('Page number (default: 1). Each page returns up to 50 lines of output.'),
     });
   }
 
@@ -31,7 +37,8 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
     try {
       const id = extractRunId(input.id);
       const pattern = input.pattern;
-      const context = input.context;
+      const context = input.context ?? 3;
+      const page = Math.max(1, input.page ?? 1);
 
       const logs = await downloadLogs(id);
       const allLines = logs.split('\n');
@@ -68,6 +75,13 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
         }
       }
 
+      // Paginate the output
+      const startLine = (page - 1) * MAX_LINES_PER_PAGE;
+      const endLine = startLine + MAX_LINES_PER_PAGE;
+      const paginatedLines = outputLines.slice(startLine, endLine);
+      const totalPages = Math.ceil(outputLines.length / MAX_LINES_PER_PAGE);
+      const hasMore = page < totalPages;
+
       return {
         content: [
           {
@@ -78,7 +92,11 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
               context,
               matches_found: matchingIndices.length,
               total_lines: allLines.length,
-              logs: outputLines.join('\n').substring(0, 100000),
+              page,
+              total_pages: totalPages,
+              has_more: hasMore,
+              next_page: hasMore ? page + 1 : null,
+              logs: paginatedLines.join('\n'),
             }, null, 2),
           },
         ],
