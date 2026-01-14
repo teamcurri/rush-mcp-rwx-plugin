@@ -11,4 +11,9 @@ export declare function fetchRunStatus(runId: string): Promise<{
     status: 'running' | 'success' | 'failure' | 'unknown';
     isComplete: boolean;
 }>;
+/**
+ * Download logs for a run or task and return the concatenated content.
+ * Handles both single log files and extracted directories with multiple logs.
+ */
+export declare function downloadLogs(id: string): string;
 //# sourceMappingURL=utils.d.ts.map

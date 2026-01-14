@@ -1,59 +1,6 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
-import { extractRunId, runRwxCommand } from '../utils';
-import { readFileSync, readdirSync, rmSync, mkdtempSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
-
-/**
- * Download logs for a run or task and return the content
- */
-function downloadLogs(id: string): string {
-  const outputDir = mkdtempSync(join(tmpdir(), `rwx-logs-${id}-`));
-
-  try {
-    runRwxCommand(['logs', id, '--output-dir', outputDir, '--auto-extract']);
-
-    // Try to find the log file
-    const possiblePaths = [
-      join(outputDir, `${id}.log`),
-      join(outputDir, 'output.log'),
-      join(outputDir, 'logs.txt'),
-    ];
-
-    let logsContent = '';
-    for (const logPath of possiblePaths) {
-      try {
-        logsContent = readFileSync(logPath, 'utf-8');
-        break;
-      } catch {
-        continue;
-      }
-    }
-
-    if (!logsContent) {
-      const files = readdirSync(outputDir);
-      const logFile = files.find(
-        (f: string) => f.endsWith('.log') || f.endsWith('.txt')
-      );
-      if (logFile) {
-        logsContent = readFileSync(join(outputDir, logFile), 'utf-8');
-      }
-    }
-
-    if (!logsContent) {
-      throw new Error('No log files found in downloaded output');
-    }
-
-    return logsContent;
-  } finally {
-    try {
-      rmSync(outputDir, { force: true, recursive: true });
-    } catch (cleanupError) {
-      console.error('Failed to cleanup temp directory:', cleanupError);
-    }
-  }
-}
+import { extractRunId, downloadLogs } from '../utils';
 
 export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
   public readonly plugin: RwxPlugin;

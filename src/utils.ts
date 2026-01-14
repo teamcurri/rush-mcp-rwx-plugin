@@ -1,4 +1,7 @@
 import { execFileSync } from 'child_process';
+import { readFileSync, readdirSync, rmSync, mkdtempSync, statSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 export const RWX_ORG = 'curri';
 export const MIN_RWX_VERSION = '2.3.2';
@@ -138,4 +141,71 @@ export async function fetchRunStatus(runId: string): Promise<{
     console.error('Error fetching run status:', error);
     throw error;
   }
+}
+
+/**
+ * Download logs for a run or task and return the concatenated content.
+ * Handles both single log files and extracted directories with multiple logs.
+ */
+export function downloadLogs(id: string): string {
+  const outputDir = mkdtempSync(join(tmpdir(), `rwx-logs-${id}-`));
+
+  try {
+    runRwxCommand(['logs', id, '--output-dir', outputDir, '--auto-extract']);
+
+    // Find all log files, including in subdirectories
+    const logFiles = findLogFiles(outputDir);
+    
+    if (logFiles.length === 0) {
+      throw new Error('No log files found in downloaded output');
+    }
+
+    // If there's only one log file, return its content
+    if (logFiles.length === 1) {
+      return readFileSync(logFiles[0], 'utf-8');
+    }
+
+    // Multiple log files - concatenate them with headers
+    const contents: string[] = [];
+    for (const logFile of logFiles.sort()) {
+      const relativePath = logFile.replace(outputDir + '/', '');
+      const content = readFileSync(logFile, 'utf-8');
+      contents.push(`\n=== ${relativePath} ===\n${content}`);
+    }
+    
+    return contents.join('\n');
+  } finally {
+    try {
+      rmSync(outputDir, { force: true, recursive: true });
+    } catch (cleanupError) {
+      console.error('Failed to cleanup temp directory:', cleanupError);
+    }
+  }
+}
+
+/**
+ * Recursively find all .log and .txt files in a directory
+ */
+function findLogFiles(dir: string): string[] {
+  const results: string[] = [];
+  
+  try {
+    const entries = readdirSync(dir);
+    
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const stat = statSync(fullPath);
+      
+      if (stat.isDirectory()) {
+        // Recurse into subdirectories
+        results.push(...findLogFiles(fullPath));
+      } else if (entry.endsWith('.log') || entry.endsWith('.txt')) {
+        results.push(fullPath);
+      }
+    }
+  } catch {
+    // Ignore errors reading directories
+  }
+  
+  return results;
 }
