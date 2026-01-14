@@ -23,11 +23,11 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
         .string()
         .describe('Pattern to search for in the logs (case-insensitive)'),
       context: zod
-        .number()
+        .coerce.number()
         .default(3)
         .describe('Number of context lines before and after matches (default: 3)'),
       page: zod
-        .number()
+        .coerce.number()
         .default(1)
         .describe('Page number (default: 1). Each page returns up to 50 lines of output.'),
     });

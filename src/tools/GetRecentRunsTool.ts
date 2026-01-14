@@ -33,7 +33,7 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
         .string()
         .describe('Git ref (branch name) to filter runs by'),
       limit: zod
-        .number()
+        .coerce.number()
         .default(5)
         .describe('Number of runs to return (default: 5)'),
     });

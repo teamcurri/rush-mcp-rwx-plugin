@@ -16,11 +16,11 @@ export class WaitForCiRunTool implements IRushMcpTool<WaitForCiRunTool['schema']
     return zod.object({
       run_id: zod.string().describe('RWX run ID or full URL to wait for'),
       timeout_seconds: zod
-        .number()
+        .coerce.number()
         .default(1800)
         .describe('Maximum time to wait in seconds (default: 1800 = 30 min)'),
       poll_interval_seconds: zod
-        .number()
+        .coerce.number()
         .default(30)
         .describe('Seconds between status checks (default: 30)'),
     });

@@ -20,11 +20,11 @@ export class HeadLogsTool implements IRushMcpTool<HeadLogsTool['schema']> {
         .string()
         .describe('RWX run ID or task ID'),
       lines: zod
-        .number()
+        .coerce.number()
         .default(MAX_LINES_PER_PAGE)
         .describe(`Number of lines to return from the beginning (default: ${MAX_LINES_PER_PAGE}, max: ${MAX_LINES_PER_PAGE})`),
       offset: zod
-        .number()
+        .coerce.number()
         .default(0)
         .describe('Line offset to start from (default: 0). Use for pagination.'),
     });

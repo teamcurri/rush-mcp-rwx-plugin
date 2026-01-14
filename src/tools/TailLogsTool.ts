@@ -20,11 +20,11 @@ export class TailLogsTool implements IRushMcpTool<TailLogsTool['schema']> {
         .string()
         .describe('RWX run ID or task ID'),
       lines: zod
-        .number()
+        .coerce.number()
         .default(MAX_LINES_PER_PAGE)
         .describe(`Number of lines to return from the end (default: ${MAX_LINES_PER_PAGE}, max: ${MAX_LINES_PER_PAGE})`),
       offset: zod
-        .number()
+        .coerce.number()
         .default(0)
         .describe('Line offset from the end (default: 0). Use for pagination to see earlier lines.'),
     });
