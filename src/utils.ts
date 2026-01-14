@@ -6,6 +6,14 @@ import { tmpdir } from 'os';
 export const RWX_ORG = 'curri';
 export const MIN_RWX_VERSION = '2.3.2';
 
+// Cache for downloaded logs (only for completed runs)
+interface LogsCacheEntry {
+  logs: string;
+  expiresAt: number;
+}
+const logsCache = new Map<string, LogsCacheEntry>();
+const LOGS_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Check if the rwx CLI is installed and meets the minimum version requirement.
  * Throws an error if not installed or version is too low.
@@ -146,8 +154,39 @@ export async function fetchRunStatus(runId: string): Promise<{
 /**
  * Download logs for a run or task and return the concatenated content.
  * Handles both single log files and extracted directories with multiple logs.
+ * Caches logs for completed runs for 30 minutes.
  */
-export function downloadLogs(id: string): string {
+export async function downloadLogs(id: string): Promise<string> {
+  // Check cache first
+  const cached = logsCache.get(id);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.logs;
+  }
+
+  // Download the logs
+  const logs = downloadLogsFromRwx(id);
+
+  // Check if the run is complete - if so, cache the logs
+  try {
+    const { isComplete } = await fetchRunStatus(id);
+    if (isComplete) {
+      logsCache.set(id, {
+        logs,
+        expiresAt: Date.now() + LOGS_CACHE_TTL_MS,
+      });
+    }
+  } catch {
+    // If we can't fetch status (e.g., it's a task ID not a run ID), 
+    // try to determine completion from logs content or just don't cache
+  }
+
+  return logs;
+}
+
+/**
+ * Internal function to actually download logs from RWX CLI
+ */
+function downloadLogsFromRwx(id: string): string {
   const outputDir = mkdtempSync(join(tmpdir(), `rwx-logs-${id}-`));
 
   try {

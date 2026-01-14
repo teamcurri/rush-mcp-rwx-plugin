@@ -29,7 +29,7 @@ export class HeadLogsTool implements IRushMcpTool<HeadLogsTool['schema']> {
       const id = extractRunId(input.id);
       const numLines = input.lines;
 
-      const logs = downloadLogs(id);
+      const logs = await downloadLogs(id);
       const allLines = logs.split('\n');
       const headLines = allLines.slice(0, numLines).join('\n');
 

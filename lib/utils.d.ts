@@ -14,6 +14,7 @@ export declare function fetchRunStatus(runId: string): Promise<{
 /**
  * Download logs for a run or task and return the concatenated content.
  * Handles both single log files and extracted directories with multiple logs.
+ * Caches logs for completed runs for 30 minutes.
  */
-export declare function downloadLogs(id: string): string;
+export declare function downloadLogs(id: string): Promise<string>;
 //# sourceMappingURL=utils.d.ts.map

@@ -25,7 +25,7 @@ export class GetTaskLogsTool implements IRushMcpTool<GetTaskLogsTool['schema']> 
   public async executeAsync(input: zodModule.infer<GetTaskLogsTool['schema']>): Promise<CallToolResult> {
     try {
       const id = extractRunId(input.task_id);
-      const logsContent = downloadLogs(id);
+      const logsContent = await downloadLogs(id);
 
       const lines = logsContent.split('\n');
       const failureHighlights = lines

@@ -33,7 +33,7 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
       const pattern = input.pattern;
       const context = input.context;
 
-      const logs = downloadLogs(id);
+      const logs = await downloadLogs(id);
       const allLines = logs.split('\n');
       
       // Find matching lines with context

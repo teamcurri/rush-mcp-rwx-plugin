@@ -29,7 +29,7 @@ export class TailLogsTool implements IRushMcpTool<TailLogsTool['schema']> {
       const id = extractRunId(input.id);
       const numLines = input.lines;
 
-      const logs = downloadLogs(id);
+      const logs = await downloadLogs(id);
       const allLines = logs.split('\n');
       const tailLines = allLines.slice(-numLines).join('\n');
 
