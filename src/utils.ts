@@ -14,36 +14,54 @@ interface LogsCacheEntry {
 const logsCache = new Map<string, LogsCacheEntry>();
 const LOGS_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
+export interface RwxVersionCheck {
+  installed: boolean;
+  version: string | null;
+  meetsMinimum: boolean;
+}
+
+/**
+ * Get the rwx CLI version information without throwing.
+ * Returns an object with installation status, version, and whether it meets minimum requirements.
+ */
+export function getRwxCliVersion(): RwxVersionCheck {
+  try {
+    const versionOutput = execFileSync('rwx', ['--version'], {
+      encoding: 'utf-8',
+    }).trim();
+
+    const versionMatch = versionOutput.match(/v?(\d+\.\d+\.\d+)/);
+    if (!versionMatch) {
+      return { installed: true, version: null, meetsMinimum: false };
+    }
+
+    const version = versionMatch[1];
+    const meetsMinimum = isVersionGte(version, MIN_RWX_VERSION);
+
+    return { installed: true, version, meetsMinimum };
+  } catch {
+    return { installed: false, version: null, meetsMinimum: false };
+  }
+}
+
 /**
  * Check if the rwx CLI is installed and meets the minimum version requirement.
  * Throws an error if not installed or version is too low.
+ * @deprecated Use getRwxCliVersion() for non-throwing version check
  */
 export function checkRwxCliVersion(): void {
-  let versionOutput: string;
-
-  try {
-    versionOutput = execFileSync('rwx', ['--version'], {
-      encoding: 'utf-8',
-    }).trim();
-  } catch (error) {
+  const check = getRwxCliVersion();
+  
+  if (!check.installed) {
     throw new Error(
       `rwx CLI is not installed or not in PATH. Please install rwx CLI version >= ${MIN_RWX_VERSION}. ` +
         'See https://docs.rwx.com/mint/install for installation instructions.'
     );
   }
 
-  // Parse version from output like "rwx version v2.3.2"
-  const versionMatch = versionOutput.match(/v?(\d+\.\d+\.\d+)/);
-  if (!versionMatch) {
+  if (!check.meetsMinimum) {
     throw new Error(
-      `Could not parse rwx CLI version from output: ${versionOutput}`
-    );
-  }
-
-  const installedVersion = versionMatch[1];
-  if (!isVersionGte(installedVersion, MIN_RWX_VERSION)) {
-    throw new Error(
-      `rwx CLI version ${installedVersion} is installed, but version >= ${MIN_RWX_VERSION} is required. ` +
+      `rwx CLI version ${check.version} is installed, but version >= ${MIN_RWX_VERSION} is required. ` +
         'Please update your rwx CLI installation.'
     );
   }

@@ -2,7 +2,12 @@ import type { IRushMcpPlugin, RushMcpPluginSession } from './types/rush-mcp-plug
 export declare class RwxPlugin implements IRushMcpPlugin {
     session: RushMcpPluginSession;
     private _proxyClient;
+    private _rwxCliReady;
     constructor(session: RushMcpPluginSession);
+    /**
+     * Check if the rwx CLI is ready (installed and meets minimum version).
+     */
+    get rwxCliReady(): boolean;
     onInitializeAsync(): Promise<void>;
     onShutdownAsync(): Promise<void>;
 }

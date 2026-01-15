@@ -1,6 +1,7 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { extractRunId, fetchRunStatus, RWX_ORG } from '../utils';
+import { checkRwxToken, handleRwxError } from '../elicitation';
 
 export class WaitForCiRunTool implements IRushMcpTool<WaitForCiRunTool['schema']> {
   public readonly plugin: RwxPlugin;
@@ -27,6 +28,12 @@ export class WaitForCiRunTool implements IRushMcpTool<WaitForCiRunTool['schema']
   }
 
   public async executeAsync(input: zodModule.infer<WaitForCiRunTool['schema']>): Promise<CallToolResult> {
+    // Check prerequisites - token only (this tool uses API, not CLI)
+    const tokenCheck = checkRwxToken();
+    if (tokenCheck) {
+      return tokenCheck;
+    }
+
     const id = extractRunId(input.run_id);
     const runUrl = `https://cloud.rwx.com/mint/${RWX_ORG}/runs/${id}`;
     const startTime = Date.now();
@@ -83,15 +90,7 @@ export class WaitForCiRunTool implements IRushMcpTool<WaitForCiRunTool['schema']
         ],
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to wait for run: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+      return handleRwxError(error, 'wait for run');
     }
   }
 }

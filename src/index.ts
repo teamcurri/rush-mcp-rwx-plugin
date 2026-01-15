@@ -1,7 +1,7 @@
 import type { IRushMcpPlugin, RushMcpPluginSession } from './types/rush-mcp-plugin';
 import { McpProxyClient } from './McpProxyClient';
 import { ProxyTool } from './ProxyTool';
-import { checkRwxCliVersion } from './utils';
+import { getRwxCliVersion } from './utils';
 import { LaunchCiRunTool } from './tools/LaunchCiRunTool';
 import { WaitForCiRunTool } from './tools/WaitForCiRunTool';
 import { GetTaskLogsTool } from './tools/GetTaskLogsTool';
@@ -9,41 +9,73 @@ import { HeadLogsTool } from './tools/HeadLogsTool';
 import { TailLogsTool } from './tools/TailLogsTool';
 import { GrepLogsTool } from './tools/GrepLogsTool';
 import { GetRecentRunsTool } from './tools/GetRecentRunsTool';
+import { SetRwxAccessTokenTool } from './tools/SetRwxAccessTokenTool';
+import { VerifyRwxCliTool } from './tools/VerifyRwxCliTool';
 
 export class RwxPlugin implements IRushMcpPlugin {
   public session: RushMcpPluginSession;
   private _proxyClient: McpProxyClient | null = null;
+  private _rwxCliReady: boolean = false;
 
   public constructor(session: RushMcpPluginSession) {
     this.session = session;
   }
 
+  /**
+   * Check if the rwx CLI is ready (installed and meets minimum version).
+   */
+  public get rwxCliReady(): boolean {
+    return this._rwxCliReady;
+  }
+
   public async onInitializeAsync(): Promise<void> {
-    // Check rwx CLI version on boot - throws if not installed or version too low
-    checkRwxCliVersion();
-
     try {
-      // Start the rwx mcp proxy client
-      this._proxyClient = new McpProxyClient();
-      await this._proxyClient.startAsync();
+      // Always register configuration tools first - these don't require CLI or token
+      this.session.registerTool(
+        { toolName: 'set_rwx_access_token' },
+        new SetRwxAccessTokenTool(this)
+      );
 
-      // Dynamically register all tools from the rwx mcp server
-      for (const tool of this._proxyClient.tools) {
-        this.session.registerTool(
-          { toolName: tool.name },
-          new ProxyTool(
-            this,
-            this._proxyClient,
-            tool.name,
-            tool.description || '',
-            tool.inputSchema
-          )
-        );
+      this.session.registerTool(
+        { toolName: 'verify_rwx_cli' },
+        new VerifyRwxCliTool(this)
+      );
+
+      // Check rwx CLI version - but don't throw, just log and set state
+      const cliCheck = getRwxCliVersion();
+      this._rwxCliReady = cliCheck.installed && cliCheck.meetsMinimum;
+
+      if (!cliCheck.installed) {
+        console.error('[RWX Plugin] rwx CLI not installed - tools will prompt for installation');
+      } else if (!cliCheck.meetsMinimum) {
+        console.error(`[RWX Plugin] rwx CLI version ${cliCheck.version} is below minimum - tools will prompt for upgrade`);
       }
 
-      console.error(`[RWX Plugin] Successfully proxied ${this._proxyClient.tools.length} tools from rwx mcp serve`);
+      // Only start proxy client if CLI is ready
+      if (this._rwxCliReady) {
+        // Start the rwx mcp proxy client
+        this._proxyClient = new McpProxyClient();
+        await this._proxyClient.startAsync();
+
+        // Dynamically register all tools from the rwx mcp server
+        for (const tool of this._proxyClient.tools) {
+          this.session.registerTool(
+            { toolName: tool.name },
+            new ProxyTool(
+              this,
+              this._proxyClient,
+              tool.name,
+              tool.description || '',
+              tool.inputSchema
+            )
+          );
+        }
+
+        console.error(`[RWX Plugin] Successfully proxied ${this._proxyClient.tools.length} tools from rwx mcp serve`);
+      }
 
       // Register native tools that extend rwx mcp functionality
+      // These will check for CLI/token availability at runtime
       this.session.registerTool(
         { toolName: 'launch_ci_run' },
         new LaunchCiRunTool(this)
@@ -79,7 +111,7 @@ export class RwxPlugin implements IRushMcpPlugin {
         new GetRecentRunsTool(this)
       );
 
-      console.error('[RWX Plugin] Registered 7 native tools (launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs, get_recent_runs)');
+      console.error('[RWX Plugin] Registered 9 native tools (set_rwx_access_token, verify_rwx_cli, launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs, get_recent_runs)');
     } catch (error) {
       console.error('[RWX Plugin] Failed to initialize:', error);
       throw error;

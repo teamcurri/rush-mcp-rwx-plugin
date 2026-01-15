@@ -1,6 +1,7 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { runRwxCommand } from '../utils';
+import { checkRwxPrerequisites, handleRwxError } from '../elicitation';
 
 export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> {
   public readonly plugin: RwxPlugin;
@@ -22,6 +23,12 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
   }
 
   public async executeAsync(input: zodModule.infer<LaunchCiRunTool['schema']>): Promise<CallToolResult> {
+    // Check prerequisites - both CLI and token needed
+    const prereqCheck = checkRwxPrerequisites();
+    if (prereqCheck) {
+      return prereqCheck;
+    }
+
     try {
       const args = ['run', '.rwx/ci.yml', '--json'];
       if (input.targets && input.targets.length > 0) {
@@ -47,15 +54,7 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
         ],
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to launch: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+      return handleRwxError(error, 'launch CI run');
     }
   }
 }

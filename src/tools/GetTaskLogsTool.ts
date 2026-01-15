@@ -1,6 +1,7 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { extractRunId, downloadLogs } from '../utils';
+import { checkRwxPrerequisites, handleRwxError } from '../elicitation';
 
 export class GetTaskLogsTool implements IRushMcpTool<GetTaskLogsTool['schema']> {
   public readonly plugin: RwxPlugin;
@@ -23,6 +24,12 @@ export class GetTaskLogsTool implements IRushMcpTool<GetTaskLogsTool['schema']> 
   }
 
   public async executeAsync(input: zodModule.infer<GetTaskLogsTool['schema']>): Promise<CallToolResult> {
+    // Check prerequisites - both CLI and token needed (downloadLogs uses CLI)
+    const prereqCheck = checkRwxPrerequisites();
+    if (prereqCheck) {
+      return prereqCheck;
+    }
+
     try {
       const id = extractRunId(input.task_id);
       const logsContent = await downloadLogs(id);
@@ -56,15 +63,7 @@ export class GetTaskLogsTool implements IRushMcpTool<GetTaskLogsTool['schema']> 
         ],
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to get task logs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+      return handleRwxError(error, 'get task logs');
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { extractRunId, downloadLogs } from '../utils';
+import { checkRwxPrerequisites, handleRwxError } from '../elicitation';
 
 const MAX_LINES_PER_PAGE = 50;
 
@@ -31,6 +32,12 @@ export class TailLogsTool implements IRushMcpTool<TailLogsTool['schema']> {
   }
 
   public async executeAsync(input: zodModule.infer<TailLogsTool['schema']>): Promise<CallToolResult> {
+    // Check prerequisites - both CLI and token needed (downloadLogs uses CLI)
+    const prereqCheck = checkRwxPrerequisites();
+    if (prereqCheck) {
+      return prereqCheck;
+    }
+
     try {
       const id = extractRunId(input.id);
       const numLines = Math.min(input.lines ?? MAX_LINES_PER_PAGE, MAX_LINES_PER_PAGE);
@@ -69,15 +76,7 @@ export class TailLogsTool implements IRushMcpTool<TailLogsTool['schema']> {
         ],
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to get tail logs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+      return handleRwxError(error, 'get tail logs');
     }
   }
 }

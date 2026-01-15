@@ -1,6 +1,7 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { RWX_ORG } from '../utils';
+import { checkRwxToken, handleRwxError } from '../elicitation';
 
 interface RwxRunListItem {
   id: string;
@@ -40,11 +41,14 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
   }
 
   public async executeAsync(input: zodModule.infer<GetRecentRunsTool['schema']>): Promise<CallToolResult> {
+    // Check prerequisites - token only (this tool uses API, not CLI)
+    const tokenCheck = checkRwxToken();
+    if (tokenCheck) {
+      return tokenCheck;
+    }
+
     try {
       const accessToken = process.env.RWX_ACCESS_TOKEN;
-      if (!accessToken) {
-        throw new Error('RWX_ACCESS_TOKEN environment variable not set');
-      }
 
       // Query the RWX API for runs - fetch more than needed since we'll filter client-side
       const fetchLimit = Math.min(input.limit * 10, 100);
@@ -112,15 +116,7 @@ export class GetRecentRunsTool implements IRushMcpTool<GetRecentRunsTool['schema
         ],
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to get recent runs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+      return handleRwxError(error, 'get recent runs');
     }
   }
 }

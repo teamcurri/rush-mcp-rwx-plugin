@@ -1,6 +1,7 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
 import { extractRunId, downloadLogs } from '../utils';
+import { checkRwxPrerequisites, handleRwxError } from '../elicitation';
 
 const MAX_LINES_PER_PAGE = 50;
 
@@ -34,6 +35,12 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
   }
 
   public async executeAsync(input: zodModule.infer<GrepLogsTool['schema']>): Promise<CallToolResult> {
+    // Check prerequisites - both CLI and token needed (downloadLogs uses CLI)
+    const prereqCheck = checkRwxPrerequisites();
+    if (prereqCheck) {
+      return prereqCheck;
+    }
+
     try {
       const id = extractRunId(input.id);
       const pattern = input.pattern;
@@ -102,15 +109,7 @@ export class GrepLogsTool implements IRushMcpTool<GrepLogsTool['schema']> {
         ],
       };
     } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to grep logs: ${error}`,
-          },
-        ],
-        isError: true,
-      };
+      return handleRwxError(error, 'grep logs');
     }
   }
 }
