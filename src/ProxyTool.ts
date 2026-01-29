@@ -4,23 +4,20 @@ import type { McpProxyClient } from './McpProxyClient';
 
 /**
  * Patterns to replace CLI command references with MCP tool references
+ * Note: Backtick patterns must come BEFORE plain text patterns to match first
  */
 const CLI_TO_MCP_REPLACEMENTS: Array<[RegExp, string]> = [
-  // rwx logs -> get_task_logs / head_logs / tail_logs / grep_logs
-  [/\brwx logs\b/gi, 'get_task_logs, head_logs, tail_logs, or grep_logs tools'],
+  // Backtick patterns first (more specific)
   [/`rwx logs[^`]*`/gi, 'the log tools (get_task_logs, head_logs, tail_logs, grep_logs)'],
-  
-  // rwx results -> get_run_results
-  [/\brwx results\b/gi, 'get_run_results tool'],
   [/`rwx results[^`]*`/gi, 'the get_run_results tool'],
-  
-  // rwx artifacts -> get_artifacts
-  [/\brwx artifacts\b/gi, 'get_artifacts tool'],
   [/`rwx artifacts[^`]*`/gi, 'the get_artifacts tool'],
-  
-  // rwx run -> launch_ci_run
-  [/\brwx run\b/gi, 'launch_ci_run tool'],
   [/`rwx run[^`]*`/gi, 'the launch_ci_run tool'],
+  
+  // Plain text patterns (less specific, match after backticks)
+  [/\brwx logs\b/gi, 'the log tools (get_task_logs, head_logs, tail_logs, grep_logs)'],
+  [/\brwx results\b/gi, 'the get_run_results tool'],
+  [/\brwx artifacts\b/gi, 'the get_artifacts tool'],
+  [/\brwx run\b/gi, 'the launch_ci_run tool'],
 ];
 
 /**
