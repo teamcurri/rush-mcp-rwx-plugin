@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 export const RWX_ORG = 'curri';
-export const MIN_RWX_VERSION = '2.3.2';
+export const MIN_RWX_VERSION = '3.0.0';
 
 // Cache for downloaded logs (only for completed runs)
 interface LogsCacheEntry {
@@ -208,7 +208,7 @@ function downloadLogsFromRwx(id: string): string {
   const outputDir = mkdtempSync(join(tmpdir(), `rwx-logs-${id}-`));
 
   try {
-    runRwxCommand(['logs', id, '--output-dir', outputDir, '--auto-extract']);
+    runRwxCommand(['logs', id, '--output-dir', outputDir, '--auto-extract', '--output', 'json']);
 
     // Find all log files, including in subdirectories
     const logFiles = findLogFiles(outputDir);

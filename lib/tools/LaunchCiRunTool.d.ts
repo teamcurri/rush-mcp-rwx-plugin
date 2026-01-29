@@ -6,10 +6,13 @@ export declare class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['sc
     constructor(plugin: RwxPlugin);
     get schema(): zodModule.ZodObject<{
         targets: zodModule.ZodOptional<zodModule.ZodArray<zodModule.ZodString, "many">>;
+        wait: zodModule.ZodDefault<zodModule.ZodBoolean>;
     }, "strip", zodModule.ZodTypeAny, {
+        wait: boolean;
         targets?: string[] | undefined;
     }, {
         targets?: string[] | undefined;
+        wait?: boolean | undefined;
     }>;
     executeAsync(input: zodModule.infer<LaunchCiRunTool['schema']>): Promise<CallToolResult>;
 }

@@ -1,7 +1,14 @@
 import type { IRushMcpTool, RushMcpPluginSession, CallToolResult, zodModule } from '../types/rush-mcp-plugin';
 import type { RwxPlugin } from '../index';
-import { runRwxCommand } from '../utils';
+import { runRwxCommand, RWX_ORG } from '../utils';
 import { checkRwxPrerequisites, handleRwxError } from '../elicitation';
+
+interface RwxRunOutput {
+  run_id: string;
+  run_url: string;
+  result?: string;
+  execution?: string;
+}
 
 export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> {
   public readonly plugin: RwxPlugin;
@@ -19,6 +26,10 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
         .array(zod.string())
         .optional()
         .describe('Specific tasks to target (optional)'),
+      wait: zod
+        .boolean()
+        .default(false)
+        .describe('Wait for the run to complete before returning (default: false)'),
     });
   }
 
@@ -30,29 +41,72 @@ export class LaunchCiRunTool implements IRushMcpTool<LaunchCiRunTool['schema']> 
     }
 
     try {
-      const args = ['run', '.rwx/ci.yml', '--json'];
+      const args = ['run', '.rwx/ci.yml', '--output', 'json'];
+      
+      if (input.wait) {
+        args.push('--wait');
+      }
+      
       if (input.targets && input.targets.length > 0) {
         input.targets.forEach((t) => args.push('--target', t));
       }
+      
       const result = runRwxCommand(args);
-      const parsed = JSON.parse(result);
+      const parsed = JSON.parse(result) as RwxRunOutput;
 
-      const response = {
-        next_step:
-          'Use wait_for_ci_run to wait for completion, or get_run_test_failures to check results',
-        run_id: parsed.RunId || parsed.run_id,
-        status: 'launched',
-        url: parsed.RunURL || parsed.url,
-      };
+      const runId = parsed.run_id;
+      const runUrl = parsed.run_url || `https://cloud.rwx.com/mint/${RWX_ORG}/runs/${runId}`;
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(response, null, 2),
-          },
-        ],
-      };
+      if (input.wait) {
+        // Run completed - include result status
+        const resultStatus = parsed.result?.toLowerCase();
+        let status: string;
+        if (resultStatus === 'succeeded') {
+          status = 'success';
+        } else if (resultStatus === 'failed') {
+          status = 'failure';
+        } else {
+          status = resultStatus || 'unknown';
+        }
+
+        const response = {
+          completed: true,
+          next_step: status === 'failure' 
+            ? 'Use get_run_results to see task failures, or grep_logs to search for errors'
+            : 'Run completed successfully',
+          run_id: runId,
+          status,
+          url: runUrl,
+        };
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+          isError: status === 'failure',
+        };
+      } else {
+        // Run launched but not waited for
+        const response = {
+          completed: false,
+          next_step: 'Use wait_for_ci_run to wait for completion, or launch with wait=true',
+          run_id: runId,
+          status: 'launched',
+          url: runUrl,
+        };
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+        };
+      }
     } catch (error) {
       return handleRwxError(error, 'launch CI run');
     }

@@ -13,7 +13,7 @@
     "rush-mcp-plugin.json"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/support lib/",
     "clean": "rm -rf lib",
     "cli": "node cli.js",
     "prepare": "npm run build",
@@ -39,7 +39,8 @@
   "homepage": "https://github.com/teamcurri/rush-mcp-rwx-plugin#readme",
   "dependencies": {
     "@types/node": "^24.0.1",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "yaml": "^2.3.0"
   },
   "devDependencies": {
     "@rushstack/mcp-server": "^0.2.1"

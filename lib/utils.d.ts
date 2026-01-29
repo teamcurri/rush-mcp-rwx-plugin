@@ -1,5 +1,5 @@
 export declare const RWX_ORG = "curri";
-export declare const MIN_RWX_VERSION = "2.3.2";
+export declare const MIN_RWX_VERSION = "3.0.0";
 export interface RwxVersionCheck {
     installed: boolean;
     version: string | null;

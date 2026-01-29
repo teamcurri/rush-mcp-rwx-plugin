@@ -11,6 +11,9 @@ import { GrepLogsTool } from './tools/GrepLogsTool';
 import { GetRecentRunsTool } from './tools/GetRecentRunsTool';
 import { SetRwxAccessTokenTool } from './tools/SetRwxAccessTokenTool';
 import { VerifyRwxCliTool } from './tools/VerifyRwxCliTool';
+import { ValidateWorkflowTool } from './tools/ValidateWorkflowTool';
+import { GetRunResultsTool } from './tools/GetRunResultsTool';
+import { GetArtifactsTool } from './tools/GetArtifactsTool';
 
 export class RwxPlugin implements IRushMcpPlugin {
   public session: RushMcpPluginSession;
@@ -111,7 +114,22 @@ export class RwxPlugin implements IRushMcpPlugin {
         new GetRecentRunsTool(this)
       );
 
-      console.error('[RWX Plugin] Registered 9 native tools (set_rwx_access_token, verify_rwx_cli, launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs, get_recent_runs)');
+      this.session.registerTool(
+        { toolName: 'validate_workflow' },
+        new ValidateWorkflowTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'get_run_results' },
+        new GetRunResultsTool(this)
+      );
+
+      this.session.registerTool(
+        { toolName: 'get_artifacts' },
+        new GetArtifactsTool(this)
+      );
+
+      console.error('[RWX Plugin] Registered 12 native tools (set_rwx_access_token, verify_rwx_cli, launch_ci_run, wait_for_ci_run, get_task_logs, head_logs, tail_logs, grep_logs, get_recent_runs, validate_workflow, get_run_results, get_artifacts)');
     } catch (error) {
       console.error('[RWX Plugin] Failed to initialize:', error);
       throw error;
