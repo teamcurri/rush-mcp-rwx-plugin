@@ -13,7 +13,7 @@
     "rush-mcp-plugin.json"
   ],
   "scripts": {
-    "build": "tsc && cp -r src/support lib/",
+    "build": "tsc && rm -rf lib/support && cp -r src/support lib/",
     "clean": "rm -rf lib",
     "cli": "node cli.js",
     "prepare": "npm run build",
