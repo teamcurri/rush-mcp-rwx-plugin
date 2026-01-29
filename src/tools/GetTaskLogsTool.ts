@@ -18,7 +18,7 @@ export class GetTaskLogsTool implements IRushMcpTool<GetTaskLogsTool['schema']> 
       task_id: zod
         .string()
         .describe(
-          'RWX task ID (32-char hex) - get from Honeycomb cicd.pipeline.task.run.url.full'
+          'RWX task ID (32-char hex) or task URL'
         ),
     });
   }
